@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
