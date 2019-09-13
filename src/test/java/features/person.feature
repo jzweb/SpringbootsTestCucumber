@@ -6,6 +6,7 @@ When The client make a "post" request at "persona/guardar"
 And Sending the required attribute name "Jorge" lastname "Zevallos"
 Then The status response should be 200
 And The response message status is "true"
+And Verify if the response meets the expected schema "./src/test/java/Schemas/ResponseAddPersonSchema.json"
 
 Scenario: Verifying details from person saved
 When The client make a "get" request at "persona/obtener/"

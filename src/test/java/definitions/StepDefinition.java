@@ -2,6 +2,16 @@ package definitions;
 
 
 import static org.junit.Assert.assertEquals;
+
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.junit.Ignore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -60,26 +70,26 @@ public class StepDefinition extends IntegrationTestCucumberApplicationTests{
 	@Then("^The status response should be (\\d+)$")
 	public void the_status_response_should_be(int arg1) throws Throwable {
 		
-		int code = 0;
+		int statusCode = 0;
 		
 	    if(Constants.RequestMethod.equals("GET")) {
 			   request = null;
 			   result = testRestTemplate.exchange(Constants.url, HttpMethod.GET, request, String.class);
 			   System.out.println(result.getBody());
 		       responseFromGet = convertToJson(result.getBody());
-		       code = result.getStatusCode().value();
+		       statusCode = result.getStatusCode().value();
 		   
 	    }
 	    else {
 			   result = testRestTemplate.postForEntity(Constants.url, person, String.class);
 			   JsonObject json = convertToJson(result.getBody());
-			   code = result.getStatusCode().value();
-			   if(code == 200) {
+			   statusCode = result.getStatusCode().value();
+			   if(statusCode == 200) {
 				   Constants.personId = json.get("personId").getAsString();
 			   }
 	    }
 		//Validation if status code is correct
-		assertEquals(arg1, code);
+		assertEquals(arg1, statusCode);
 	
 
 	}
@@ -90,6 +100,23 @@ public class StepDefinition extends IntegrationTestCucumberApplicationTests{
 				System.out.println(jsonResponse.has("status"));
 				assertEquals(Boolean.parseBoolean(string), jsonResponse.get("status").getAsBoolean());
 	}
+	
+	@Then("Verify if the response meets the expected schema {string}")
+	public void verify_if_the_response_meets_the_expected_schema(String fileSchema) throws Exception {
+				Path pathJsonSchema = Paths.get(fileSchema);
+				if(!Files.exists(pathJsonSchema)){
+		            throw new Exception("Schema File doesnt exist: " + fileSchema);
+		        }
+				System.out.println("Path:" + pathJsonSchema);
+				try (InputStream inputStream = getClass().getResourceAsStream(fileSchema)) {
+					  JSONObject rawSchema = new JSONObject(new JSONTokener(inputStream));
+					  Schema schema = SchemaLoader.load(rawSchema);
+					  schema.validate(responseFromInsert); // throws a ValidationException if this object is invalid
+					}catch (Exception ex){
+		                System.out.println(ex.getMessage());
+		            }
+		
+	}	
 
 
 	@When("Insert the personId on the path")
@@ -108,17 +135,10 @@ public class StepDefinition extends IntegrationTestCucumberApplicationTests{
 		       assertEquals(string2,lastname);
 	}
 	
-	
-	public boolean validatePort(String port) {
-		boolean result = false;
-		if(port.equals("localhost")) {
-			result = true;
-		}
-		return result;
-	}
+
 	
 	public String buildPath(String path) {
-		String fullPath = Constants.baseUri+path;
+		String fullPath = Constants.baseUri + path;
 		return fullPath;
 	}
 	

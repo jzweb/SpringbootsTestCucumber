@@ -1,8 +1,6 @@
 package com.integrationTestCucumber;
 
-import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import cucumber.api.CucumberOptions;
 import cucumber.api.junit.Cucumber;
 
