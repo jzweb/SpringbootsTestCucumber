@@ -1,0 +1,138 @@
+package definitions;
+
+
+import static org.junit.Assert.assertEquals;
+import org.junit.Ignore;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import com.integrationTestCucumber.IntegrationTestCucumberApplicationTests;
+import com.integrationTestCucumber.model.Person;
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
+import gherkin.deps.com.google.gson.Gson;
+import gherkin.deps.com.google.gson.JsonObject;
+import model.Constants;
+import model.PersonInsert;
+
+
+@Ignore
+public class StepDefinition extends IntegrationTestCucumberApplicationTests{
+	@Autowired
+    private TestRestTemplate testRestTemplate;
+	private PersonInsert person = null;
+	JsonObject responseFromInsert = null;
+	JsonObject responseFromGet = null;
+	HttpEntity<Person> request = null;
+	ResponseEntity<String> result = null;
+
+
+
+	@Given("^The endpoint host \"([^\"]*)\"$")
+	public void the_endpoint_host(String arg1) throws Throwable {
+
+		Constants.baseUri = arg1+":"+ port +"/";
+		System.out.println(Constants.baseUri);
+	}
+
+	@When("The client make a {string} request at {string}")
+	public void the_client_make_a_request_at(String string, String string2) {
+		Constants.url = buildPath(string2);
+		Constants.RequestMethod = string.toUpperCase();
+	}
+	
+	@When("Sending the required attribute name {string} lastname {string}")
+	public void sending_the_required_attribute_name_lastname(String string, String string2) {
+		person = new PersonInsert();
+		if(isString(string)) {
+			person.setName(string);
+			
+		}
+		if(isString(string2)) {
+			person.setLastname(string2);
+		}
+	}
+
+
+	@Then("^The status response should be (\\d+)$")
+	public void the_status_response_should_be(int arg1) throws Throwable {
+		
+		int code = 0;
+		
+	    if(Constants.RequestMethod.equals("GET")) {
+			   request = null;
+			   result = testRestTemplate.exchange(Constants.url, HttpMethod.GET, request, String.class);
+			   System.out.println(result.getBody());
+		       responseFromGet = convertToJson(result.getBody());
+		       code = result.getStatusCode().value();
+		   
+	    }
+	    else {
+			   result = testRestTemplate.postForEntity(Constants.url, person, String.class);
+			   JsonObject json = convertToJson(result.getBody());
+			   code = result.getStatusCode().value();
+			   if(code == 200) {
+				   Constants.personId = json.get("personId").getAsString();
+			   }
+	    }
+		//Validation if status code is correct
+		assertEquals(arg1, code);
+	
+
+	}
+	
+	@Then("The response message status is {string}")
+	public void the_response_message_status_is(String string)  {
+				JsonObject jsonResponse = convertToJson(result.getBody());
+				System.out.println(jsonResponse.has("status"));
+				assertEquals(Boolean.parseBoolean(string), jsonResponse.get("status").getAsBoolean());
+	}
+
+
+	@When("Insert the personId on the path")
+	public void insert_the_personId_on_the_path() {
+			    Constants.url= Constants.url + Constants.personId;
+			    System.out.println(Constants.url);
+	}
+
+
+
+	@Then("The response must be contains name {string} and lastname {string}")
+	public void the_response_must_be_contains_name_and_lastname(String string, String string2) {
+	    	   String name = responseFromGet.get("person").getAsJsonObject().get("name").getAsString();
+	    	   String lastname = responseFromGet.get("person").getAsJsonObject().get("lastname").getAsString();
+			   assertEquals(string, name);
+		       assertEquals(string2,lastname);
+	}
+	
+	
+	public boolean validatePort(String port) {
+		boolean result = false;
+		if(port.equals("localhost")) {
+			result = true;
+		}
+		return result;
+	}
+	
+	public String buildPath(String path) {
+		String fullPath = Constants.baseUri+path;
+		return fullPath;
+	}
+	
+	public boolean isString(String attribute) {
+		boolean result = false;
+		if(attribute != null && !attribute.trim().isEmpty()) {
+			result = true;
+		}
+		return result;
+	}
+	
+	public JsonObject convertToJson(String string) {
+		JsonObject jsonResponse = new Gson().fromJson(string, JsonObject.class);
+		return jsonResponse;
+	}
+}
+
