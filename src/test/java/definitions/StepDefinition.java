@@ -2,15 +2,6 @@ package definitions;
 
 
 import static org.junit.Assert.assertEquals;
-
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import org.everit.json.schema.Schema;
-import org.everit.json.schema.loader.SchemaLoader;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 import org.junit.Ignore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -19,6 +10,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import com.integrationTestCucumber.IntegrationTestCucumberApplicationTests;
 import com.integrationTestCucumber.model.Person;
+import com.sun.xml.xsom.impl.Ref.ContentType;
+
 import cucumber.api.java.en.Given;
 import cucumber.api.java.en.Then;
 import cucumber.api.java.en.When;
@@ -26,6 +19,11 @@ import gherkin.deps.com.google.gson.Gson;
 import gherkin.deps.com.google.gson.JsonObject;
 import model.Constants;
 import model.PersonInsert;
+import io.restassured.RestAssured;
+
+import static  io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath; 
+// @formatter:on
+
 
 
 @Ignore
@@ -49,6 +47,7 @@ public class StepDefinition extends IntegrationTestCucumberApplicationTests{
 
 	@When("The client make a {string} request at {string}")
 	public void the_client_make_a_request_at(String string, String string2) {
+		Constants.path = string2;
 		Constants.url = buildPath(string2);
 		Constants.RequestMethod = string.toUpperCase();
 	}
@@ -102,18 +101,24 @@ public class StepDefinition extends IntegrationTestCucumberApplicationTests{
 	
 	@Then("Verify if the response meets the expected schema {string}")
 	public void verify_if_the_response_meets_the_expected_schema(String fileSchema) throws Exception {
-				Path pathJsonSchema = Paths.get(fileSchema);
-				if(!Files.exists(pathJsonSchema)){
-		            throw new Exception("Schema File doesnt exist: " + fileSchema);
-		        }
-				System.out.println("Path:" + pathJsonSchema);
-				try (InputStream inputStream = getClass().getResourceAsStream(fileSchema)) {
-					  JSONObject rawSchema = new JSONObject(new JSONTokener(inputStream));
-					  Schema schema = SchemaLoader.load(rawSchema);
-					  schema.validate(responseFromInsert); // throws a ValidationException if this object is invalid
-					}catch (Exception ex){
-		                System.out.println(ex.getMessage());
-		            }
+		System.out.println("request: " + Constants.baseUri);
+		System.out.println("request: " + Constants.path);
+		RestAssured.baseURI = Constants.baseUri;
+		String payload = "{\n" +
+		        "  \"name\": \"Jorge\",\n" +
+		        "  \"lastname\": \"Zevallos\"\n" +
+		        "}";
+		
+		 Object s = RestAssured.given()
+		 .contentType(io.restassured.http.ContentType.JSON)
+         .body(payload)
+         .post(Constants.path)
+         .then().assertThat()
+         .body(matchesJsonSchemaInClasspath("personSchema.json"));
+		 
+		 if(s!=null) {
+			 System.out.println("Valid Schema");
+		 }
 		
 	}	
 
@@ -153,5 +158,6 @@ public class StepDefinition extends IntegrationTestCucumberApplicationTests{
 		JsonObject jsonResponse = new Gson().fromJson(string, JsonObject.class);
 		return jsonResponse;
 	}
+	
 }
 
